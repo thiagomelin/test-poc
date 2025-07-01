@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  # MongoDB otimizado para alta volumetria
+  mongodb:
+    image: mongo:7.0
+    container_name: order-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: orderuser
+      MONGO_INITDB_ROOT_PASSWORD: orderpass
+      MONGO_INITDB_DATABASE: orderdb
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-init:/docker-entrypoint-initdb.d
+    ports:
+      - "27017:27017"
+    command: >
+      mongod
+      --wiredTigerCacheSizeGB 1
+      --maxConns 500
+      --logpath /var/log/mongodb/mongod.log
+      --logappend
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis para cache e controle de concorrência
+  redis:
+    image: redis:7-alpine
+    container_name: order-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # LocalStack para simular AWS SQS
+  localstack:
+    image: localstack/localstack:3.0
+    container_name: order-localstack
+    environment:
+      - SERVICES=sqs
+      - DEBUG=1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    ports:
+      - "4566:4566"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Aplicação Spring Boot
+#  order-service:
+#    build: .
+#    container_name: order-service
+#    environment:
+#      - SPRING_PROFILES_ACTIVE=docker
+#      - SPRING_DATA_MONGODB_URI=mongodb://orderuser:orderpass@mongodb:27017/orderdb?authSource=admin
+#      - SPRING_REDIS_HOST=redis
+#      - SPRING_REDIS_PORT=6379
+#      - AWS_ENDPOINT=http://localstack:4566
+#      - AWS_ACCESS_KEY_ID=test
+#      - AWS_SECRET_ACCESS_KEY=test
+#      - AWS_REGION=us-east-1
+#    ports:
+#      - "8080:8080"
+#    depends_on:
+#      mongodb:
+#        condition: service_healthy
+#      redis:
+#        condition: service_healthy
+#      localstack:
+#        condition: service_healthy
+#    healthcheck:
+#      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+#      interval: 30s
+#      timeout: 10s
+#      retries: 3
+#      start_period: 60s
+
+volumes:
+  mongodb_data:
+    driver: local
+  redis_data:
+    driver: local
+  localstack_data:
+    driver: local 

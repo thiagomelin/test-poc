@@ -1,0 +1,96 @@
+spring:
+  application:
+    name: order-service
+  cache:
+    type: redis
+    redis:
+      time-to-live: 86400000 # 24 horas em milissegundos
+      cache-null-values: false
+  # Configurações do MongoDB
+  data:
+    mongodb:
+      uri: mongodb://orderuser:orderpass@localhost:27017/orderdb?authSource=admin
+      database: orderdb
+      auto-index-creation: true
+      # Configurações de performance para alta volumetria
+      max-connection-pool-size: 100
+      min-connection-pool-size: 10
+      max-connection-idle-time: 30000
+      max-connection-life-time: 1800000
+      # Configurações de escrita
+      write-concern: MAJORITY
+      read-preference: PRIMARY
+      # Configurações de timeout
+      connect-timeout: 10000
+      socket-timeout: 30000
+      server-selection-timeout: 30000
+  # Configurações Redis
+  redis:
+    host: localhost
+    port: 6379
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 20
+        max-idle: 10
+        min-idle: 5
+        max-wait: 1000ms
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+    default-property-inclusion: non_null
+
+# Configurações do servidor
+server:
+  port: 8080
+  tomcat:
+    threads:
+      max: 200
+      min-spare: 10
+    max-connections: 8192
+    accept-count: 100
+    connection-timeout: 20000
+
+# Configurações de logging
+logging:
+  level:
+    com.order: INFO
+    org.springframework.data.mongodb: WARN
+    org.springframework.cache: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Configurações do Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+aws:
+  sqs:
+    calculate-order-queue: http://sqs.sa-east-1.localhost.localstack.cloud:4566/000000000000/calculate-orders-queue
+    endpoint: http://localhost:4566
+    region: us-east-1
+    access-key: test
+    secret-key: test
+
+# Configurações de Cache Redis
+cache:
+  redis:
+    order:
+      prefix: order_cache_
+      ttl-hours: 24
+    lock:
+      prefix: order_lock_
+      ttl-seconds: 30
+
